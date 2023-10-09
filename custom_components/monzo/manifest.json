@@ -10,5 +10,6 @@
   "iot_class": "cloud_polling",
   "requirements": ["monzopy==1.0.9"],
   "ssdp": [],
-  "zeroconf": []
+  "zeroconf": [],
+  "version": "1.0.0"
 }
