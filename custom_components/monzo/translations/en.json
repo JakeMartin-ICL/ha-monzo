@@ -1,0 +1,53 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Account is already configured",
+            "already_in_progress": "Configuration flow is already in progress",
+            "authorize_url_timeout": "Timeout generating authorize URL.",
+            "missing_configuration": "The component is not configured. Please follow the documentation.",
+            "no_url_available": "No URL available. For information about this error, [check the help section]({docs_url})",
+            "oauth_error": "Received invalid token data.",
+            "user_rejected_authorize": "Account linking rejected: {error}"
+        },
+        "create_entry": {
+            "default": "Successfully authenticated"
+        },
+        "step": {
+            "pick_implementation": {
+                "title": "Pick Authentication Method"
+            },
+            "reauth_confirm": {
+                "description": "The Monzo integration needs to re-authenticate your account",
+                "title": "Reauthenticate Integration"
+            }
+        }
+    },
+    "services": {
+        "pot_transfer": {
+            "description": "Move money between a pot and your current or joint account.",
+            "fields": {
+                "amount": {
+                    "description": "The amount of money to transfer in GBP.",
+                    "name": "Amount"
+                },
+                "transfer_account": {
+                    "description": "The current or joint account to transfer from or to.",
+                    "name": "Transfer account"
+                },
+                "transfer_type": {
+                    "description": "Deposit into or withdraw from the pot",
+                    "name": "Transfer type"
+                }
+            },
+            "name": "Pot transfer"
+        },
+        "register_webhook": {
+            "description": "Registers webhooks for all Monzo accounts with Monzo.",
+            "name": "Register webhook"
+        },
+        "unregister_webhook": {
+            "description": "Unregisters all Monzo webhooks with Monzo.",
+            "name": "Unregister webhook"
+        }
+    }
+}
