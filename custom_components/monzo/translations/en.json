@@ -13,6 +13,13 @@
             "default": "Successfully authenticated"
         },
         "step": {
+            "await_approval_confirmation": {
+                "data": {
+                    "confirm": "I've approved"
+                },
+                "description": "Before proceeding, open your Monzo app and approve the request from Home Assistant.",
+                "title": "Confirm in Monzo app"
+            },
             "pick_implementation": {
                 "title": "Pick Authentication Method"
             },
