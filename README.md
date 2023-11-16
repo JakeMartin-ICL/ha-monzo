@@ -37,7 +37,7 @@ The Monzo integration allows you to connect your Monzo bank accounts to Home Ass
 
 ## Prerequisites and Approval
 
-Before adding the Monzo integration, you'll need to create a [Monzo developer account](https://developers.monzo.com/). From here, you need to create a new OAuth client for Home Assistant to use by going to *Clients* > *New OAuth Client*, then fill in the form as follows:
+Before adding the Monzo integration, you'll need to create a [Monzo developer account](https://developers.monzo.com/). From here, you need to create a new OAuth client for Home Assistant to use by going to *Clients* > *New OAuth Client*, then fill in the form as follows (make sure to copy the URL as shown, don't replace it with your own):
 
 - Name: Home Assistant
 - Logo URL: This can be left blank
