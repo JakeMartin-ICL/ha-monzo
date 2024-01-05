@@ -40,7 +40,7 @@ ACC_SENSORS = (
         name="Balance",
         value=lambda data: data["balance"]["balance"] / 100,
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="£",
+        native_unit_of_measurement="GBP",
         suggested_display_precision=2,
     ),
     MonzoSensorEntityDescription(
@@ -48,7 +48,7 @@ ACC_SENSORS = (
         name="Total Balance",
         value=lambda data: data["balance"]["total_balance"] / 100,
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="£",
+        native_unit_of_measurement="GBP",
         suggested_display_precision=2,
     ),
 )
@@ -59,7 +59,7 @@ POT_SENSORS = (
         name="Balance",
         value=lambda data: data["balance"] / 100,
         device_class=SensorDeviceClass.MONETARY,
-        native_unit_of_measurement="£",
+        native_unit_of_measurement="GBP",
         suggested_display_precision=2,
     ),
 )
