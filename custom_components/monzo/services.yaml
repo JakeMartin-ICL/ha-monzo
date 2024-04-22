@@ -54,7 +54,7 @@ pot_transfer:
           min: 0
           max: 1000000
           step: 0.01
-          unit_of_measurement: £
+          unit_of_measurement: GBP
           mode: box
 
 register_webhook:
