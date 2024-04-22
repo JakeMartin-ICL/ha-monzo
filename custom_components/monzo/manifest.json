@@ -8,8 +8,8 @@
   "documentation": "https://www.home-assistant.io/integrations/monzo",
   "homekit": {},
   "iot_class": "cloud_polling",
-  "requirements": ["monzopy==1.0.10"],
+  "requirements": ["monzopy==1.1.0"],
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.0.1"
+  "version": "1.1.0"
 }
