@@ -1,3 +1,4 @@
 {
-  "name": "Monzo"
+  "name": "Monzo",
+  "render_readme": true
 }
