@@ -6,6 +6,8 @@ This is an integration for Monzo, the UK bank. It provides balance and total bal
 If you'd like to check out the integration on HACS, it can be found at: https://github.com/JakeMartin-ICL/ha-monzo/tree/main
 The repo with the API wrapper is: https://github.com/JakeMartin-ICL/monzopy
 
+**Update 06/06/24:** As of today, the Monzo integration is now part of Home Assistant core, however the core version currently lacks some features (pot transfer and device triggers) that didn't make it in time for the release. If you're using these features, stick with this version for now. This version will still continue to be updated, typically getting new fixes and features before the core integration.
+
 ## Screenshots
 Each account is shown in HA as a device
 ![image](https://github.com/home-assistant/core/assets/15602977/c3ccfc14-441c-44c2-9dd3-34d9e076ee0d)
