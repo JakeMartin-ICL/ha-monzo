@@ -1,0 +1,3 @@
+codespell==2.3.0
+ruff==0.4.8
+yamllint==1.35.1
