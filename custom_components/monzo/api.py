@@ -1,12 +1,13 @@
 """API for Monzo bound to Home Assistant OAuth."""
+
 from aiohttp import ClientSession
 from monzopy import AbstractMonzoApi
 
 from homeassistant.helpers import config_entry_oauth2_flow
 
 
-class AsyncConfigEntryAuth(AbstractMonzoApi):
-    """Provide Monzo authentication tied to an OAuth2 based config entry."""
+class AuthenticatedMonzoAPI(AbstractMonzoApi):
+    """A Monzo API instance with authentication tied to an OAuth2 based config entry."""
 
     def __init__(
         self,

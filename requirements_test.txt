@@ -1,0 +1,12 @@
+homeassistant==2024.6.1
+monzopy==1.3.0
+
+pytest-asyncio
+pytest-homeassistant-custom-component==0.13.133
+pytest==8.2.0
+
+# Missing subdependencies of homeassistant
+hassil
+home-assistant-intents
+mutagen
+ha-ffmpeg

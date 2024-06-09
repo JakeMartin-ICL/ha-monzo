@@ -1,31 +1,29 @@
-"""Base entity for Withings."""
+"""Base entity for Monzo."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
 
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .coordinator import MonzoCoordinator, MonzoSensorData
 
 
-class MonzoBaseEntity(CoordinatorEntity):
+class MonzoBaseEntity(CoordinatorEntity[MonzoCoordinator]):
     """Common base for Monzo entities."""
 
     _attr_attribution = "Data provided by Monzo"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator,
+        coordinator: MonzoCoordinator,
         index: int,
         device_model: str,
-        data_accessor: Callable[
-            [dict[str, list[dict[str, Any]]]], list[dict[str, Any]]
-        ],
+        data_accessor: Callable[[MonzoSensorData], list[dict[str, Any]]],
     ) -> None:
         """Initialize sensor."""
         super().__init__(coordinator)
@@ -33,10 +31,11 @@ class MonzoBaseEntity(CoordinatorEntity):
         self._data_accessor = data_accessor
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{self.data['id']}")},
+            entry_type=DeviceEntryType.SERVICE,
+            identifiers={(DOMAIN, str(self.data["id"]))},
             manufacturer="Monzo",
             model=device_model,
-            name=f"{self.data['name']}",
+            name=self.data["name"],
         )
 
     @property

@@ -1,26 +1,8 @@
 # Service ID
 pot_transfer:
-  # If the service accepts entity IDs, target allows the user to specify entities by
-  # entity, device, or area. If `target` is specified, `entity_id` should not be
-  # defined in the `fields` map. By default it shows only targets matching entities
-  # from the same domain as the service, but if further customization is required,
-  # target supports the entity, device, and area selectors
-  # (https://www.home-assistant.io/docs/blueprint/selectors/). Entity selector
-  # parameters will automatically be applied to device and area, and device selector
-  # parameters will automatically be applied to area.
-  target:
-    device:
-      integration: monzo
-      model: Pot
-  # Different fields that your service accepts
   fields:
-    # Key of the field
-    # Key of the field
     transfer_account:
-      # Whether or not field is required (default = false)
       required: false
-      # Selector (https://www.home-assistant.io/docs/blueprint/selectors/) to control
-      # the input UI for this field
       selector:
         device:
           filter:
@@ -28,6 +10,14 @@ pot_transfer:
               model: Current Account
             - integration: monzo
               model: Joint Account
+    transfer_pots:
+      required: true
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: monzo
+              model: Pot
     transfer_type:
       required: true
       selector:
@@ -38,17 +28,10 @@ pot_transfer:
             - label: Withdraw from pot
               value: withdraw
     amount:
-      # Whether or not field is required (default = false)
       required: true
-      # Advanced fields are only shown when the advanced mode is enabled for the user
-      # (default = false)
       advanced: false
-      # Example value that can be passed for this field
       example: 12.34
-      # The default field value
       default: 1.00
-      # Selector (https://www.home-assistant.io/docs/blueprint/selectors/) to control
-      # the input UI for this field
       selector:
         number:
           min: 0
@@ -56,6 +39,3 @@ pot_transfer:
           step: 0.01
           unit_of_measurement: GBP
           mode: box
-
-register_webhook:
-unregister_webhook:

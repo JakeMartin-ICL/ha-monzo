@@ -1,0 +1,37 @@
+# serializer version: 1
+# name: test_all_entities[sensor.current_account_balance-entry]
+  RegistryEntry(entity_id='sensor.current_account_balance', unique_id='acc_curr_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='f25409490b9b3c9cffda050f50abc83e', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='eee409c8b9953b175be799ed8892a802', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Balance', supported_features=0, translation_key='balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.current_account_balance-state]
+  <state sensor.current_account_balance=1.23; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Current Account Balance @ 2024-06-09T15:57:56.293453-07:00>
+# ---
+# name: test_all_entities[sensor.current_account_total_balance-entry]
+  RegistryEntry(entity_id='sensor.current_account_total_balance', unique_id='acc_curr_total_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='f25409490b9b3c9cffda050f50abc83e', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='6ce1caefc4740b4747981ca1d1bfa4e5', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Total balance', supported_features=0, translation_key='total_balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.current_account_total_balance-state]
+  <state sensor.current_account_total_balance=3.21; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Current Account Total balance @ 2024-06-09T15:57:56.296404-07:00>
+# ---
+# name: test_all_entities[sensor.flex_balance-entry]
+  RegistryEntry(entity_id='sensor.flex_balance', unique_id='acc_flex_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='26cb21fa0f09c48b7ad8a150ff4254ce', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='c0133a38add17a6a6ee80def1b39b5cd', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Balance', supported_features=0, translation_key='balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.flex_balance-state]
+  <state sensor.flex_balance=1.23; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Flex Balance @ 2024-06-09T15:57:56.295084-07:00>
+# ---
+# name: test_all_entities[sensor.flex_total_balance-entry]
+  RegistryEntry(entity_id='sensor.flex_total_balance', unique_id='acc_flex_total_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='26cb21fa0f09c48b7ad8a150ff4254ce', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='d1b57867040ce300f91c0048c0eb79ef', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Total balance', supported_features=0, translation_key='total_balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.flex_total_balance-state]
+  <state sensor.flex_total_balance=3.21; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Flex Total balance @ 2024-06-09T15:57:56.297688-07:00>
+# ---
+# name: test_all_entities[sensor.savings_balance-entry]
+  RegistryEntry(entity_id='sensor.savings_balance', unique_id='pot_savings_pot_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='f7d0dbd5ccbe55ec4a79fc38bf3ff0da', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='70797a6380c3958a4dcc6438def1dca9', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Balance', supported_features=0, translation_key='pot_balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.savings_balance-state]
+  <state sensor.savings_balance=1345.78; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Savings Balance @ 2024-06-09T15:57:56.299198-07:00>
+# ---
+# name: test_all_entities[sensor.transport_balance-entry]
+  RegistryEntry(entity_id='sensor.transport_balance', unique_id='pot_transport_pot_balance', platform='monzo', previous_unique_id=None, aliases=set(), area_id=None, categories={}, capabilities=None, config_entry_id='361730c00789cbe050c3ab08be84c548', device_class=None, device_id='23588a65d84ddc864b58d06dd911c1b6', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='dad5c95a6aafb03e76cc7b766fae6b72', has_entity_name=True, labels=set(), name=None, options={'sensor': {'suggested_display_precision': 2}}, original_device_class=<SensorDeviceClass.MONETARY: 'monetary'>, original_icon=None, original_name='Balance', supported_features=0, translation_key='pot_balance', unit_of_measurement='GBP')
+# ---
+# name: test_all_entities[sensor.transport_balance-state]
+  <state sensor.transport_balance=1.23; unit_of_measurement=GBP, attribution=Data provided by Monzo, device_class=monetary, friendly_name=Transport Balance @ 2024-06-09T15:57:56.300788-07:00>
+# ---

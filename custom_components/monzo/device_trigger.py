@@ -1,4 +1,5 @@
-"""Provides device automations for Netatmo."""
+"""Provides transaction creation triggers for Monzo."""
+
 from __future__ import annotations
 
 import voluptuous as vol
@@ -21,13 +22,12 @@ from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.trigger import TriggerActionType, TriggerInfo
 from homeassistant.helpers.typing import ConfigType
 
-from .const import ACCOUNT_ID, DOMAIN, MODEL_POT, MONZO_EVENT
+from .const import DOMAIN, EVENT_TRANSACTION_CREATED, MODEL_POT, MONZO_EVENT
 
-ACCOUNT_TRIGGERS = [
-    "transaction.created",
+TRIGGER_TYPES = [
+    EVENT_TRANSACTION_CREATED,
 ]
-
-TRIGGER_TYPES = ACCOUNT_TRIGGERS
+ACCOUNT_ID = "account_id"
 
 TRIGGER_SCHEMA = DEVICE_TRIGGER_BASE_SCHEMA.extend(
     {
@@ -68,16 +68,16 @@ async def async_get_triggers(
     triggers = []
 
     if device is not None:
-        for trigger in TRIGGER_TYPES:
-            triggers.append(
-                {
-                    CONF_PLATFORM: CONF_DEVICE,
-                    ACCOUNT_ID: next(iter(device.identifiers))[1],
-                    CONF_DOMAIN: DOMAIN,
-                    CONF_DEVICE_ID: device_id,
-                    CONF_TYPE: trigger,
-                }
-            )
+        triggers = [
+            {
+                CONF_PLATFORM: CONF_DEVICE,
+                ACCOUNT_ID: next(iter(device.identifiers))[1],
+                CONF_DOMAIN: DOMAIN,
+                CONF_DEVICE_ID: device_id,
+                CONF_TYPE: trigger,
+            }
+            for trigger in TRIGGER_TYPES
+        ]
 
     return triggers
 
@@ -89,12 +89,6 @@ async def async_attach_trigger(
     trigger_info: TriggerInfo,
 ) -> CALLBACK_TYPE:
     """Attach a trigger."""
-    device_registry = dr.async_get(hass)
-    device = device_registry.async_get(config[CONF_DEVICE_ID])
-
-    if not device:
-        return lambda: None
-
     event_config = {
         event_trigger.CONF_PLATFORM: Platform.EVENT,
         event_trigger.CONF_EVENT_TYPE: MONZO_EVENT,
