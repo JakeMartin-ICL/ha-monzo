@@ -1,12 +1,13 @@
 """The Monzo integration."""
+
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
 import logging
 from typing import Any
 
+from aiohttp.web import Request
 from monzopy import InvalidMonzoAPIResponseError
 
 from homeassistant.components import cloud
@@ -16,313 +17,214 @@ from homeassistant.components.webhook import (
     async_unregister as webhook_unregister,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    ATTR_DEVICE_ID,
-    CONF_AUTHENTICATION,
-    EVENT_HOMEASSISTANT_STARTED,
-    EVENT_HOMEASSISTANT_STOP,
-    Platform,
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
+from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.config_entry_oauth2_flow import (
+    OAuth2Session,
+    async_get_config_entry_implementation,
 )
-from homeassistant.core import CoreState, Event, HomeAssistant, ServiceCall, callback
-from homeassistant.helpers import (
-    aiohttp_client,
-    config_entry_oauth2_flow,
-    device_registry as dr,
-)
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.network import get_url
+from homeassistant.helpers.typing import ConfigType
 
-from .api import AsyncConfigEntryAuth
-from .const import (
-    ACCOUNTS,
-    ATTR_AMOUNT,
-    CONF_CLOUDHOOK_URL,
-    CONF_COORDINATOR,
-    DEFAULT_AMOUNT,
-    DEPOSIT,
-    DOMAIN,
-    MODEL_POT,
-    POTS,
-    SERVICE_POT_TRANSFER,
-    SERVICE_REGISTER_WEBHOOK,
-    SERVICE_UNREGISTER_WEBHOOK,
-    TRANSFER_ACCOUNTS,
-    TRANSFER_TYPE,
-    VALID_POT_TRANSFER_ACCOUNTS,
-    WEBHOOK_DEACTIVATION,
-    WEBHOOK_PUSH_TYPE,
-)
-from .webhook import async_handle_webhook
+from .api import AuthenticatedMonzoAPI
+from .const import DOMAIN, EVENT_TRANSACTION_CREATED, MONZO_EVENT
+from .coordinator import MonzoCoordinator
+from .services import register_services
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
+
+CONF_CLOUDHOOK_URL = "cloudhook_url"
+CONF_WEBHOOK_IDS = "webhook_ids"
+WEBHOOK_ACTIVATION = "webhook_activation"
+WEBHOOK_DEACTIVATION = "webhook_deactivation"
+WEBHOOK_PUSH_TYPE = "push_type"
+CLOUDHOOK_HOST = "hooks.nabu.casa"
+
+PLATFORMS: list[Platform] = [Platform.SENSOR]
+type MonzoConfigEntry = ConfigEntry[MonzoData]
+
+
+@dataclass
+class MonzoData:
+    """Runtime data stored in the MonzoConfigEntry."""
+
+    coordinator: MonzoCoordinator
+    webhook_ids: set[str] = field(default_factory=set)
+    cloudhook_urls: set[str] = field(default_factory=set)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Monzo from a config entry."""
-    implementation = (
-        await config_entry_oauth2_flow.async_get_config_entry_implementation(
-            hass, entry
-        )
-    )
+    implementation = await async_get_config_entry_implementation(hass, entry)
 
-    async def async_get_monzo_api_data() -> dict[str, Any]:
-        accounts = await externalapi.user_account.accounts()
-        pots = await externalapi.user_account.pots()
-        hass.data[DOMAIN][entry.entry_id][ACCOUNTS] = accounts
-        hass.data[DOMAIN][entry.entry_id][POTS] = pots
-        return {ACCOUNTS: accounts, POTS: pots}
+    session = OAuth2Session(hass, entry, implementation)
 
-    @callback
-    async def handle_pot_transfer(call: ServiceCall) -> None:
-        device_registry = dr.async_get(hass)
-        amount = int(call.data.get(ATTR_AMOUNT, DEFAULT_AMOUNT) * 100)
-        transfer_func: Callable[[str, str, int], Awaitable[bool]] = (
-            externalapi.user_account.pot_deposit
-            if call.data[TRANSFER_TYPE] == DEPOSIT
-            else externalapi.user_account.pot_withdraw
-        )
+    external_api = AuthenticatedMonzoAPI(async_get_clientsession(hass), session)
 
-        try:
-            account_ids, pot_ids = await _get_transfer_ids(
-                call, device_registry, hass, entry
-            )
-        except ValueError:
-            return
-
-        success = all(
-            await asyncio.gather(
-                *[
-                    transfer_func(account, pot, amount)
-                    for account in account_ids
-                    for pot in pot_ids
-                ]
-            )
-        )
-
-        if not success:
-            _LOGGER.error(
-                "External error handling pot transfer: one or more transactions failed"
-            )
-
-    async def register_webhook(
-        call_or_event_or_dt: ServiceCall | Event | datetime | None,
-    ) -> None:
-        for acc in hass.data[DOMAIN][entry.entry_id]["accounts"]:
-            webhook_id = entry.entry_id + acc["id"]
-            if (
-                "webhooks_ids" not in entry.data
-                or webhook_id not in hass.data[DOMAIN][entry.entry_id]["webhook_ids"]
-            ):
-                hass.data[DOMAIN][entry.entry_id]["webhook_ids"].append(webhook_id)
-
-            if cloud.async_active_subscription(hass):
-                webhook_url = await async_cloudhook_generate_url(
-                    hass, entry, webhook_id
-                )
-            else:
-                webhook_url = webhook_generate_url(hass, webhook_id)
-
-            if not webhook_url.startswith("https://"):
-                _LOGGER.warning(
-                    "Webhook not registered - "
-                    "https and port 443 is required to register the webhook"
-                )
-                return
-
-            webhook_register(
-                hass,
-                DOMAIN,
-                "Monzo",
-                webhook_id,
-                async_handle_webhook,
-            )
-
-            try:
-                await externalapi.user_account.register_webhooks(webhook_url)
-                _LOGGER.info("Register Monzo webhook: %s", webhook_url)
-            except InvalidMonzoAPIResponseError:
-                _LOGGER.error("Error during webhook registration")
-            else:
-                entry.async_on_unload(
-                    hass.bus.async_listen_once(
-                        EVENT_HOMEASSISTANT_STOP, unregister_webhook
-                    )
-                )
-
-    async def unregister_webhook(
-        call_or_event_or_dt: ServiceCall | Event | datetime | None,
-    ) -> None:
-        if "webhook_ids" not in entry.data:
-            return
-        for webhook_id in hass.data[DOMAIN][entry.entry_id]["webhook_ids"]:
-            _LOGGER.debug("Unregister Monzo webhook (%s)", webhook_id)
-            async_dispatcher_send(
-                hass,
-                f"signal-{DOMAIN}-webhook-None",
-                {"type": "None", "data": {WEBHOOK_PUSH_TYPE: WEBHOOK_DEACTIVATION}},
-            )
-            webhook_unregister(hass, webhook_id)
-            try:
-                await externalapi.user_account.unregister_webhooks()
-            except InvalidMonzoAPIResponseError:
-                _LOGGER.debug(
-                    "No webhook to be dropped for %s",
-                    webhook_id,
-                )
-
-    session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
-
-    externalapi = AsyncConfigEntryAuth(
-        aiohttp_client.async_get_clientsession(hass), session
-    )
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        logging.getLogger(__name__),
-        name=DOMAIN,
-        update_method=async_get_monzo_api_data,
-        update_interval=timedelta(minutes=1),
-    )
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
-        CONF_AUTHENTICATION: externalapi,
-        CONF_COORDINATOR: coordinator,
-        "webhook_ids": [],
-    }
-
+    coordinator = MonzoCoordinator(hass, external_api)
     await coordinator.async_config_entry_first_refresh()
+    entry.runtime_data = MonzoData(coordinator)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    webhook_manager = MonzoWebhookManager(hass, entry)
 
     async def manage_cloudhook(state: cloud.CloudConnectionState) -> None:
         if state is cloud.CloudConnectionState.CLOUD_CONNECTED:
-            await register_webhook(None)
+            await webhook_manager.register_webhooks(None)
 
         if state is cloud.CloudConnectionState.CLOUD_DISCONNECTED:
-            await unregister_webhook(None)
-            async_call_later(hass, 30, register_webhook)
+            await webhook_manager.unregister_webhooks()
+            async_call_later(hass, 30, webhook_manager.register_webhooks)
 
     if cloud.async_active_subscription(hass):
         if cloud.async_is_connected(hass):
-            await register_webhook(None)
+            await webhook_manager.register_webhooks(None)
         cloud.async_listen_connection_change(hass, manage_cloudhook)
-
     elif hass.state == CoreState.running:
-        await register_webhook(None)
+        await webhook_manager.register_webhooks(None)
     else:
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, register_webhook)
-
-    hass.services.async_register(DOMAIN, SERVICE_REGISTER_WEBHOOK, register_webhook)
-    hass.services.async_register(DOMAIN, SERVICE_UNREGISTER_WEBHOOK, unregister_webhook)
-    hass.services.async_register(DOMAIN, SERVICE_POT_TRANSFER, handle_pot_transfer)
+        hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STARTED, webhook_manager.register_webhooks
+        )
 
     return True
 
 
-async def _get_transfer_ids(
-    call: ServiceCall,
-    device_registry: DeviceRegistry,
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> tuple[list[str], list[str]]:
-    account_ids = await _get_selected_or_current_account_ids(
-        call, device_registry, hass, entry
-    )
-    pot_ids = await asyncio.gather(
-        *[
-            _get_pot_id(device_registry, acc)
-            for acc in call.data.get(ATTR_DEVICE_ID, "")
-        ]
-    )
-
-    return account_ids, pot_ids
-
-
-async def _get_selected_or_current_account_ids(
-    call: ServiceCall,
-    device_registry: DeviceRegistry,
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> list[str]:
-    return (
-        [
-            acc["id"]
-            for acc in hass.data[DOMAIN][entry.entry_id][ACCOUNTS]
-            if acc["type"] == "uk_retail"
-        ]
-        if TRANSFER_ACCOUNTS not in call.data
-        else await asyncio.gather(
-            *[
-                _get_transfer_account_id(device_registry, acc)
-                for acc in call.data[TRANSFER_ACCOUNTS]
-            ]
-        )
-    )
-
-
-async def _get_transfer_account_id(
-    device_registry: DeviceRegistry, device_id: str
-) -> str:
-    device = await _get_device(device_registry, device_id)
-    if device.model not in VALID_POT_TRANSFER_ACCOUNTS:
-        _LOGGER.error(
-            "Pot deposit failed: Can't transfer between a pot and %s", device.name
-        )
-        raise ValueError
-    _, account_id = next(iter(device.identifiers))
-    return account_id
-
-
-async def _get_pot_id(device_registry: DeviceRegistry, device_id: str) -> str:
-    device = await _get_device(device_registry, device_id)
-    if device.model != MODEL_POT:
-        _LOGGER.error("Pot transfer failed: %s is not a pot", device.name)
-        raise ValueError
-    _, pot_id = next(iter(device.identifiers))
-    return pot_id
-
-
-async def _get_device(device_registry: DeviceRegistry, device_id: str) -> DeviceEntry:
-    device = device_registry.async_get(device_id)
-    if not device:
-        _LOGGER.error("Pot deposit failed: Couldn't find device with id %s", device_id)
-        raise ValueError
-    return device
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Monzo integration."""
+    await register_services(hass)
+    return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    data = hass.data[DOMAIN]
-
-    if "webhook_ids" in entry.data:
-        for webhook_id in hass.data[DOMAIN][entry.entry_id]["webhook_ids"]:
-            webhook_unregister(hass, webhook_id)
-            try:
-                await data[entry.entry_id][
-                    CONF_AUTHENTICATION
-                ].user_account.unregister_webhooks()
-            except InvalidMonzoAPIResponseError:
-                _LOGGER.debug("No webhook to be dropped")
-            _LOGGER.info("Unregister Monzo webhook")
-
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    if unload_ok and entry.entry_id in data:
-        data.pop(entry.entry_id)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_cloudhook_generate_url(
-    hass: HomeAssistant, entry: ConfigEntry, webhook_id: str
-) -> str:
-    """Generate the full URL for a webhook_id."""
-    if CONF_CLOUDHOOK_URL not in entry.data:
-        webhook_url = await cloud.async_create_cloudhook(hass, webhook_id)
-        data = {**entry.data, CONF_CLOUDHOOK_URL: webhook_url}
-        hass.config_entries.async_update_entry(entry, data=data)
+class MonzoWebhookManager:
+    """Manages Monzo webhooks."""
+
+    _register_lock = asyncio.Lock()
+
+    def __init__(self, hass: HomeAssistant, entry: MonzoConfigEntry) -> None:
+        """Initialise the webhook manager."""
+        self.hass = hass
+        self.entry = entry
+
+    async def register_webhooks(self, _: Any) -> None:
+        """Register webhooks for all Monzo accounts."""
+        async with self._register_lock:
+            coordinator: MonzoCoordinator = self.entry.runtime_data.coordinator
+            await self.unregister_old_webhooks(coordinator)
+            for account in await coordinator.api.user_account.accounts():
+                webhook_id = self.entry.entry_id + account["id"]
+                self.entry.runtime_data.webhook_ids.add(webhook_id)
+
+                if cloud.async_active_subscription(self.hass):
+                    webhook_url = await self._async_cloudhook_generate_url(webhook_id)
+                else:
+                    webhook_url = webhook_generate_url(self.hass, webhook_id)
+
+                if not webhook_url.startswith("https://"):
+                    _LOGGER.warning(
+                        "Webhook not registered - "
+                        "https and port 443 is required to register the webhook"
+                    )
+                    return
+
+                webhook_register(
+                    self.hass,
+                    DOMAIN,
+                    "Monzo",
+                    webhook_id,
+                    async_handle_webhook,
+                )
+
+                try:
+                    await coordinator.api.user_account.register_webhooks(webhook_url)
+                    _LOGGER.info("Registered Monzo webhook: %s", webhook_url)
+                except InvalidMonzoAPIResponseError:
+                    _LOGGER.error("Error during webhook registration")
+                else:
+                    self.entry.async_on_unload(self.unregister_webhooks)
+
+    async def unregister_old_webhooks(self, coordinator: MonzoCoordinator) -> None:
+        """Unregister any old webhooks associated with this host."""
+        host = (
+            CLOUDHOOK_HOST
+            if cloud.async_active_subscription(self.hass)
+            else get_url(self.hass)
+        )
+        await coordinator.api.user_account.unregister_webhooks(host)
+
+    async def _async_cloudhook_generate_url(self, webhook_id: str) -> str:
+        """Generate the full URL for a webhook_id."""
+        webhook_url = await cloud.async_create_cloudhook(self.hass, webhook_id)
+        self.entry.runtime_data.cloudhook_urls.add(webhook_url)
         return webhook_url
-    return str(entry.data[CONF_CLOUDHOOK_URL])
+
+    async def unregister_webhooks(self) -> None:
+        """Unregister all Monzo webooks."""
+        coordinator: MonzoCoordinator = self.entry.runtime_data.coordinator
+
+        async_dispatcher_send(
+            self.hass,
+            f"signal-{DOMAIN}-webhook-None",
+            {"type": "None", "data": {WEBHOOK_PUSH_TYPE: WEBHOOK_DEACTIVATION}},
+        )
+        while self.entry.runtime_data.webhook_ids:
+            webhook_id = self.entry.runtime_data.webhook_ids.pop()
+            _LOGGER.debug("Unregister Monzo webhook (%s)", webhook_id)
+            webhook_unregister(self.hass, webhook_id)
+
+            if cloud.async_active_subscription(self.hass):
+                try:
+                    _LOGGER.debug("Removing Monzo cloudhook (%s)", webhook_id)
+                    await cloud.async_delete_cloudhook(self.hass, webhook_id)
+                except cloud.CloudNotAvailable:
+                    pass
+        await self.unregister_old_webhooks(coordinator)
+
+
+async def async_handle_webhook(
+    hass: HomeAssistant, webhook_id: str, request: Request
+) -> None:
+    """Handle webhook callback."""
+    try:
+        data = await request.json()
+    except ValueError as err:
+        _LOGGER.error("Error in data: %s", err)
+        return None
+
+    _LOGGER.debug("Got webhook data: %s", data)
+
+    event_type = data.get("type")
+
+    if event_type == EVENT_TRANSACTION_CREATED:
+        async_send_event(hass, event_type, data.get("data"))
+    else:
+        _LOGGER.debug("Got unexpected event type from webhook: %s", event_type)
+
+
+def async_send_event(hass: HomeAssistant, event_type: str, data: dict) -> None:
+    """Send events."""
+    _LOGGER.debug("%s: %s", event_type, data)
+    async_dispatcher_send(
+        hass,
+        f"signal-{DOMAIN}-webhook-{event_type}",
+        {"type": event_type, "data": data},
+    )
+
+    event_data = {"type": event_type, "data": data, "account_id": data["account_id"]}
+
+    hass.bus.async_fire(
+        event_type=MONZO_EVENT,
+        event_data=event_data,
+    )
