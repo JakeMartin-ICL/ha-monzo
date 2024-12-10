@@ -206,7 +206,7 @@ async def test_external_transfer_failure(
     monzo: AsyncMock,
 ) -> None:
     """Test pot_transfer raises HomeAssistantError if transfer fails externally."""
-    monzo.user_account.pot_deposit.return_value = False
+    monzo.user_account.pot_deposit.side_effect = InvalidMonzoAPIResponseError()
 
     with pytest.raises(HomeAssistantError):
         await _make_transfer(

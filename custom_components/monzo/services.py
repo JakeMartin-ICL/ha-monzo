@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from pprint import pformat
 from typing import cast
 
 from monzopy import AuthorisationExpiredError, InvalidMonzoAPIResponseError
@@ -57,19 +58,17 @@ async def register_services(hass: HomeAssistant) -> None:
             pot_ids = await _get_pot_ids(call, device_registry)
         except (InvalidMonzoAPIResponseError, AuthorisationExpiredError) as err:
             raise HomeAssistantError(
-                translation_domain=DOMAIN, translation_key="external_transfer_failure"
+                translation_domain=DOMAIN, translation_key="external_transfer_setup_failure"
             ) from err
 
-        success = all(
+        try:
             await asyncio.gather(
                 *[transfer_func(account_id, pot, amount) for pot in pot_ids]
             )
-        )
-
-        if not success:
+        except InvalidMonzoAPIResponseError as err:
             raise HomeAssistantError(
-                translation_domain=DOMAIN, translation_key="external_transfer_failure"
-            )
+                translation_domain=DOMAIN, translation_key="external_transfer_failure", translation_placeholders={"response": pformat(err.response)}
+            ) from err
 
     hass.services.async_register(DOMAIN, SERVICE_POT_TRANSFER, handle_pot_transfer)
 
