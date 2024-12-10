@@ -75,8 +75,11 @@
     "invalid_device_model": {
       "message": "Pot transfer failed: Device {device_name} is not one of {valid_types}."
     },
+    "external_transfer_setup_failure": {
+      "message": "Failed to set up transfers due to failure fetching pots."
+    },
     "external_transfer_failure": {
-      "message": "One or more pot transfers failed due to an external error."
+      "message": "One or more pot transfers failed due to an external error. Monzo API response: {response}"
     }
   }
 }
