@@ -1,6 +1,6 @@
 """Tests for the Monzo integration."""
 
-from homeassistant.config import async_process_ha_core_config
+from homeassistant.core_config import async_process_ha_core_config
 from homeassistant.core import HomeAssistant
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
